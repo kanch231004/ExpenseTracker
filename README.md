@@ -1,12 +1,25 @@
 
 # ExpenseTracker
-A Flutter app to track your expense and motivate you to avoid unnecessary expenses
+A beautiful Flutter app to track your expense and motivate you to avoid unnecessary expenses
 
-A few resources to get you started if this is your first Flutter project:
+## Screenshots
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+<div>
+  <img src="screenshots/expense_list.png" width="300" alt="Expense List Screen">
+  <img src="screenshots/add_expense.png" width="300" alt="Add Expense Screen">
+</div>
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference
+## Features
+
+- ✨ Clean and modern UI design
+- 📱 Responsive mobile interface
+- 💰 Easy expense tracking
+- 🏷️ Category-based organization
+- 📅 Date selection
+- 📊 Monthly spending summary
+
+## Built With
+
+- Flutter
+- Dart
+- Material Design 3
