@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
-import 'package:expense_tracker/widgets/add_expense_screen.dart';
+import 'package:expense_tracker/screens/add_expense_screen.dart';
+import '../widgets/banner_card.dart';
 
 class ExpenseListScreen extends StatefulWidget {
   const ExpenseListScreen({super.key});
@@ -90,55 +91,12 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
       body: Column(
         children: [
           // Monthly Summary Card
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF093FB), Color(0xFFF5576C)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFF093FB).withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "This Month's Spending",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '₹${NumberFormat('#,##,###').format(totalAmount)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_expenses.length} transactions',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
+          GenericBannerCard(
+            title: "This Month's Spending",
+            amount: totalAmount,
+            subtitle: '${_expenses.length} transactions',
           ),
+
           // Expense List
           Expanded(
             child: ListView.builder(
