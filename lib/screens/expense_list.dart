@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
-import 'package:expense_tracker/screens/add_expense_screen.dart';
+import '../services/expense_service.dart';
+import 'add_expense_screen.dart';
 import '../widgets/banner_card.dart';
 
 class ExpenseListScreen extends StatefulWidget {
@@ -12,51 +13,12 @@ class ExpenseListScreen extends StatefulWidget {
 }
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
-  final List<Expense> _expenses = [
-    // Sample data matching our design
-    Expense(
-      id: '1',
-      title: 'Lunch at Cafe',
-      amount: 320,
-      category: ExpenseCategory.food,
-      date: DateTime.now(),
-    ),
-    Expense(
-      id: '2',
-      title: 'Uber Ride',
-      amount: 180,
-      category: ExpenseCategory.transport,
-      date: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Expense(
-      id: '3',
-      title: 'Grocery Shopping',
-      amount: 2540,
-      category: ExpenseCategory.shopping,
-      date: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Expense(
-      id: '4',
-      title: 'Electricity Bill',
-      amount: 1850,
-      category: ExpenseCategory.bills,
-      date: DateTime.now().subtract(const Duration(days: 4)),
-    ),
-    Expense(
-      id: '5',
-      title: 'Movie Tickets',
-      amount: 600,
-      category: ExpenseCategory.entertainment,
-      date: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-  ];
-
-  double get totalAmount {
-    return _expenses.fold(0, (sum, expense) => sum + expense.amount);
-  }
+  final ExpenseService _expenseService = ExpenseService();
 
   @override
   Widget build(BuildContext context) {
+    final expenses = _expenseService.expenses;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -69,13 +31,19 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              // Wait for result and refresh the screen
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const AddExpenseScreen(),
                 ),
               );
+
+              // Refresh the screen when coming back
+              if (result == true) {
+                setState(() {});
+              }
             },
             icon: Container(
               padding: const EdgeInsets.all(8),
@@ -93,20 +61,49 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           // Monthly Summary Card
           GenericBannerCard(
             title: "This Month's Spending",
-            amount: totalAmount,
-            subtitle: '${_expenses.length} transactions',
+            amount: _expenseService.totalAmount,
+            subtitle: expenses.isEmpty
+                ? 'No transactions yet'
+                : '${expenses.length} transaction${expenses.length == 1 ? '' : 's'}',
           ),
-
           // Expense List
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _expenses.length,
-              itemBuilder: (context, index) {
-                final expense = _expenses[index];
-                return _buildExpenseItem(expense);
-              },
+            child: expenses.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: expenses.length,
+                    itemBuilder: (context, index) {
+                      final expense = expenses[index];
+                      return _buildExpenseItem(expense);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No expenses yet',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap the + button to add your first expense',
+            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
