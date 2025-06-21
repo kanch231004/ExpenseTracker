@@ -445,7 +445,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  void _saveExpense() {
+  void _saveExpense() async {
     if (!_isFormValid) return;
 
     final amount = double.parse(_amountController.text);
@@ -458,15 +458,29 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       date: _selectedDate,
     );
 
-    _expenseService.addExpense(newExpense);
+    try {
+      await _expenseService.addExpense(newExpense);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Expense saved successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Expense saved successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      Navigator.pop(context, true); // Return true to indicate success
 
-    Navigator.pop(context, true); // Return true to indicate success
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Failed to save expense: $e'),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _saveExpense(),
+          ),
+        ),
+      );
+    }
   }
 }

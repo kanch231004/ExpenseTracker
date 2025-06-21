@@ -1,0 +1,60 @@
+{
+  "expenses": [
+    {
+      "id": "1",
+      "title": "Morning Coffee",
+      "amount": 150,
+      "category": "food",
+      "date": "2024-06-21T10:30:00.000Z"
+    },
+    {
+      "id": "2",
+      "title": "Uber to Office",
+      "amount": 200,
+      "category": "transport",
+      "date": "2024-06-21T09:45:00.000Z"
+    },
+    {
+      "id": "3",
+      "title": "Grocery Shopping",
+      "amount": 1500,
+      "category": "shopping",
+      "date": "2024-06-20T18:30:00.000Z"
+    },
+    {
+      "title": "Uber",
+      "amount": 150,
+      "category": "Transport",
+      "date": "2024-06-21T12:00:00.000Z",
+      "id": "QcXxY5p"
+    },
+    {
+      "id": "1750496003553",
+      "title": "UberGo",
+      "amount": 39,
+      "category": "transport",
+      "date": "2025-06-21T14:23:06.660152"
+    },
+    {
+      "id": "1750496268467",
+      "title": "Sai foods",
+      "amount": 158,
+      "category": "food",
+      "date": "2025-06-20T00:00:00.000"
+    },
+    {
+      "id": "1750512574080",
+      "title": "tea powder",
+      "amount": 138,
+      "category": "food",
+      "date": "2025-06-21T18:59:23.644284"
+    },
+    {
+      "id": "1750844104766",
+      "title": "Tea",
+      "amount": 20,
+      "category": "food",
+      "date": "2025-06-23T00:00:00.000"
+    }
+  ]
+}

@@ -1,9 +1,12 @@
+import 'package:expense_tracker/screens/qr_scanner_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../models/expense.dart';
+import '../widgets/banner_card.dart';
+import '../widgets/expense_item_widget.dart';
 import '../services/expense_service.dart';
 import 'add_expense_screen.dart';
-import '../widgets/banner_card.dart';
 
 class ExpenseListScreen extends StatefulWidget {
   const ExpenseListScreen({super.key});
@@ -14,6 +17,104 @@ class ExpenseListScreen extends StatefulWidget {
 
 class _ExpenseListScreenState extends State<ExpenseListScreen> {
   final ExpenseService _expenseService = ExpenseService();
+  bool _isLoading = true;
+  String? _errorMessage;
+  String? scannedQR;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExpenses();
+  }
+
+  Future<void> _requestCameraPermission() async {
+    final status = await Permission.camera.status;
+    if (status.isDenied) {
+      final result = await Permission.camera.request();
+      if (result.isGranted) {
+        _openScanner();
+      } else {
+        _showPermissionDialog();
+      }
+    } else if (status.isGranted) {
+      _openScanner();
+    } else {
+      _showPermissionDialog();
+    }
+  }
+
+  void _openScanner() async {
+    final result = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const QRScannerScreen(),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        scannedQR = result;
+      });
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Camera Permission'),
+        content: const Text('Camera permission is required to scan QR codes.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadExpenses() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _expenseService.loadExpenses();
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _refreshExpenses() async {
+    try {
+      await _expenseService.refresh();
+      setState(() {
+        _errorMessage = null;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to refresh: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,20 +132,7 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () async {
-              // Wait for result and refresh the screen
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddExpenseScreen(),
-                ),
-              );
-
-              // Refresh the screen when coming back
-              if (result == true) {
-                setState(() {});
-              }
-            },
+            onPressed: _requestCameraPermission,
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -56,7 +144,81 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: _buildBody(expenses),
+    );
+  }
+
+  Widget _buildBody(List<Expense> expenses) {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: Color(0xFF6366F1),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading expenses from server...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Colors.red[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load expenses',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loadExpenses,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshExpenses,
+      color: const Color(0xFF6366F1),
+      child: Column(
         children: [
           // Monthly Summary Card
           GenericBannerCard(
@@ -66,18 +228,29 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
                 ? 'No transactions yet'
                 : '${expenses.length} transaction${expenses.length == 1 ? '' : 's'}',
           ),
+
           // Expense List
           Expanded(
             child: expenses.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: expenses.length,
-                    itemBuilder: (context, index) {
-                      final expense = expenses[index];
-                      return _buildExpenseItem(expense);
-                    },
-                  ),
+              physics: const AlwaysScrollableScrollPhysics(), // For pull-to-refresh
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: expenses.length,
+              itemBuilder: (context, index) {
+                final expense = expenses[index];
+                return ExpenseItemWidget(
+                  expense: expense,
+                  onTap: () {
+                    // Future: Navigate to edit screen
+                    print('Tapped on ${expense.title}');
+                  },
+                  onLongPress: () {
+                    _showDeleteDialog(expense);
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -85,130 +258,84 @@ class _ExpenseListScreenState extends State<ExpenseListScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No expenses yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-            ),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(), // For pull-to-refresh
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.4,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 80,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No expenses yet',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap the + button to add your first expense',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[500],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap the + button to add your first expense',
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildExpenseItem(Expense expense) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            // Colored left border
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: expense.category.color,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                ),
-              ),
+  void _showDeleteDialog(Expense expense) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Expense'),
+          content: Text('Are you sure you want to delete "${expense.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    // Category icon
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: expense.category.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        expense.category.icon,
-                        style: const TextStyle(fontSize: 20),
-                      ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog first
+
+                try {
+                  await _expenseService.removeExpense(expense.id);
+                  setState(() {}); // Refresh UI
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Expense deleted successfully'),
+                      backgroundColor: Colors.green,
                     ),
-                    const SizedBox(width: 16),
-                    // Title and category
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            expense.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2937),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${expense.category.name} • ${_formatDate(expense.date)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Failed to delete expense: $e'),
+                      backgroundColor: Colors.red,
                     ),
-                    // Amount
-                    Text(
-                      '-₹${NumberFormat('#,##,###').format(expense.amount)}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFEF4444),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                  );
+                }
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date).inDays;
-
-    if (difference == 0) {
-      return 'Today';
-    } else if (difference == 1) {
-      return 'Yesterday';
-    } else {
-      return DateFormat('MMM d').format(date);
-    }
   }
 }
